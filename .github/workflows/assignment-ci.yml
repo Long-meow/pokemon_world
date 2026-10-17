@@ -77,5 +77,30 @@ jobs:
         run: |
           sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part2_queries.sql
 
+      - name: Step 8 - Deploy Scalar Function (function.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i function.sql
+
+      - name: Step 9 - Deploy Data Validation Trigger (trigger.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i trigger.sql
+
+      - name: Step 10 - Deploy Transactional Stored Procedure (procedure.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i procedure.sql
+
+      - name: Step 11 - Execute Part 3 Modular Unit Tests (tests/test_part3_programmability.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part3_programmability.sql
+
+      - name: Step 12 - Execute Integrated Verification Test Suite (test_all.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i test_all.sql
+
+      - name: Step 13 - Validate Automated Deployment Runner (./deploy.sh)
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh
+
       - name: Audit Output Confirmation
-        run: echo "🎉 ALL PART 1 & PART 2 TESTS PASSED CLEANLY ON SQL SERVER 2022!"
+        run: echo "🎉 ALL PARTS 1, 2, 3 TESTS & INTEGRATED VERIFICATION PASSED CLEANLY ON SQL SERVER 2022!"
