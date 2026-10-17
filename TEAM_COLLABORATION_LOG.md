@@ -11,7 +11,7 @@
 | **R1** | Cả nhóm (Long lead) | `main`, `develop` | Khởi tạo repo, Git Flow, .gitignore, README.md, PR template, identities | N/A | **HOÀN THÀNH** |
 | **R2** | **Nguyễn Văn Dũng** | `feature/dung-schema-constraints` | 7 bảng 3NF (`createDB.sql`), 17 ràng buộc (`constraints.sql`), CI ban đầu | `tests/test_part1_schema.sql` | **HOÀN THÀNH** |
 | **R3** | **Trần Minh Tiến** | `feature/tien-data-queries` | 50 Pokémon, seed data (`insert.sql`), 2 views (`views.sql`), 10 queries (`queries.sql`) | `tests/test_part2_queries.sql` | **HOÀN THÀNH** |
-| **R4** | **Hoàng Phi Long** | `feature/long-programmability-deploy` | Function, Trigger (lỗi 50050), Procedure ACID, script `deploy.sh` (2-3s), finalize CI | `tests/test_part3_programmability.sql`, `test_all.sql` | ĐANG CHỜ |
+| **R4** | **Hoàng Phi Long** | `feature/long-programmability-deploy` | Function, Trigger (lỗi 50050), Procedure ACID, script `deploy.sh` (2-3s), finalize CI | `tests/test_part3_programmability.sql`, `test_all.sql` | **HOÀN THÀNH** |
 | **R5** | Cả nhóm | `develop` -> `main` | Tổng hợp minh chứng, kiểm tra hồi quy, gắn tag `v1.0.0` | Toàn bộ suite | ĐANG CHỜ |
 
 ---
@@ -236,4 +236,122 @@ Changed database context to 'pokemon_world'.
   > *"Mình đã chạy toàn bộ pipeline từ `createDB.sql` -> `constraints.sql` -> `test_part1_schema.sql` -> `insert.sql` -> `views.sql` -> `queries.sql` -> `test_part2_queries.sql` trên container SQL Server 2022. Thời gian thực thi cực nhanh, toàn bộ 10 query phân tích chạy rất mượt và trả về kết quả chính xác. File test `test_part2_queries.sql` xử lý bắt lỗi bằng `THROW` chuẩn trong dải 52001-52015. Cấu hình CI GitHub Actions được cập nhật tuần tự, logic rõ ràng. Phần dữ liệu và view này đã sẵn sàng để mình bước sang Vòng lặp 3 làm phần Lập trình nâng cao (Function, Trigger, Procedure). Mình phê duyệt và thực hiện merge `--no-ff` vào `develop`."*
 
 - **Hành động Merge**: Hoàng Phi Long thực hiện merge `--no-ff` Pull Request #2 vào `develop`.
+
+---
+
+## 4. Nhật ký chi tiết Vòng lặp 3: Long — Lập trình T-SQL Nâng cao, Kiểm thử Tích hợp & Tự động Triển khai (Requirement R4)
+
+### 4.1. Quá trình phát triển trên nhánh `feature/long-programmability-deploy`
+- **Tác giả commit**: `Hoang Phi Long <long.hp@fpt.edu.vn>`
+- **Nội dung thực hiện**:
+  1. Kéo mã nguồn mới nhất từ `develop`, tạo nhánh `feature/long-programmability-deploy`.
+  2. Triển khai các đối tượng T-SQL Programmability nâng cao:
+     - `function.sql`: Hàm vô hướng `dbo.fn_GetPokemonTotalStats` tính tổng chỉ số cơ bản (`BaseHP + BaseAttack + BaseDefense`), xử lý trả về 0 nếu mã loài không tồn tại; Bulbasaur (ID 1) đạt đúng 143 điểm.
+     - `trigger.sql`: Trigger nghiệp vụ `dbo.TR_OwnedPokemon_CheckLevel` trên bảng `dbo.OwnedPokemon` (AFTER INSERT, UPDATE), rà soát dữ liệu trong bảng ảo `inserted`. Nếu phát hiện cấp độ ngoài khoảng [1, 100], lập tức `ROLLBACK TRANSACTION` và ném mã lỗi nghiệp vụ 50050.
+     - `procedure.sql`: Thủ tục lưu trữ giao dịch `dbo.usp_CatchPokemon` thu phục Pokémon hoang dã. Quản lý giao dịch nguyên tử ACID (`SET XACT_ABORT ON; BEGIN TRAN ... COMMIT TRAN`), kiểm tra chặt chẽ Nhà huấn luyện (lỗi 51000) và điều kiện phân bố hoang dã (lỗi 51001), thêm cá thể vào PC và đồng bộ hóa bách khoa toàn thư `PersonalPokedex` (`IsCaught = 1`) bằng cú pháp `MERGE`.
+  3. Xây dựng bộ test AI modular `tests/test_part3_programmability.sql` bao gồm 3 khối:
+     - Block 1: Unit test hàm `fn_GetPokemonTotalStats` (Bulbasaur = 143, ID 99999 = 0, Charmander = 134, Squirtle = 157).
+     - Block 2: Negative test trigger `TR_OwnedPokemon_CheckLevel` với Level = 105 và Level = 0, bắt chính xác mã lỗi 50050 và xác nhận rollback; kiểm tra positive boundary test với Level 1, 50, 100.
+     - Block 3: Transaction ACID test cho thủ tục `usp_CatchPokemon` khi bắt thú cưng thành công, sinh mã ID, cập nhật `PersonalPokedex`, rollback an toàn; và bắt lỗi 51000/51001 khi truyền tham số sai.
+  4. Đưa file `test_all.sql` vào thư mục gốc dự án: Suite kiểm thử tổng hợp 5 Blocks kiểm tra toàn diện Schema, Constraints (100% Trusted/Enabled), Ngưỡng dữ liệu (50 Pokémon, >= 10 dòng/bảng), Negative Constraint & Trigger Tests, và Functional Assertions.
+  5. Xây dựng kịch bản tự động hóa triển khai `deploy.sh` tại thư mục gốc:
+     - Kiểm tra kết nối container Docker `sqlserver`, kiểm tra sự tồn tại của toàn bộ 9 file SQL.
+     - Chạy tuần tự 9 bước (`createDB.sql`, `constraints.sql`, `insert.sql`, `views.sql`, `function.sql`, `trigger.sql`, `procedure.sql`, `queries.sql`, `test_all.sql`).
+     - Thời gian chạy hoàn tất toàn bộ trong 2-3 giây, in thông báo màu trực quan và thoát exit code 0.
+  6. Hoàn thiện pipeline CI `.github/workflows/assignment-ci.yml`:
+     - Tự động chạy tuần tự toàn bộ 13 bước kiểm thử: tạo schema, nạp constraints, chạy `test_part1`, nạp seed data, tạo views, chạy queries, chạy `test_part2`, tạo function, tạo trigger, tạo procedure, chạy `test_part3`, chạy `test_all`, và kiểm thử runner `deploy.sh`.
+
+### 4.2. Kết quả kiểm thử thực tế trên SQL Server 2022
+
+Chạy kiểm thử Part 3 (`tests/test_part3_programmability.sql`):
+```text
+Changed database context to 'pokemon_world'.
+============================================================
+  TEST PART 3: T-SQL PROGRAMMABILITY AUDIT                 
+  Author: Hoang Phi Long | Target: Microsoft SQL Server 2022 
+============================================================
+ 
+>>> [1/3] Testing Scalar Function dbo.fn_GetPokemonTotalStats...
+    [PASS] Test 1.1: Bulbasaur (ID 1) total base stats = 143 (exact match).
+    [PASS] Test 1.2: Non-existent PokemonID (ID 99999) total base stats = 0 (handled gracefully).
+    [PASS] Test 1.3: Additional species verified (Charmander = 134, Squirtle = 157).
+>> [PASS] BLOCK 1: Scalar Function Unit Tests passed successfully.
+ 
+>>> [2/3] Negative Testing Trigger dbo.TR_OwnedPokemon_CheckLevel...
+    [PASS] Test 2.1: Level = 105 caught custom error 50050 and transaction rolled back completely.
+    [PASS] Test 2.2: Level = 0 caught custom error 50050 and transaction rolled back completely.
+    [PASS] Test 2.3: Valid boundary levels (1, 50, 100) passed trigger inspection cleanly.
+>> [PASS] BLOCK 2: Trigger Data Validation Tests passed successfully.
+ 
+>>> [3/3] Testing Transaction ACID & Rollback for dbo.usp_CatchPokemon...
+    [PASS] Test 3.1: Positive catch executed atomically, synced PersonalPokedex, and rolled back cleanly.
+    [PASS] Test 3.2: Invalid TrainerID caught error 51000 and prevented insertion.
+    [PASS] Test 3.3: Invalid encounter/species caught error 51001 and prevented insertion.
+>> [PASS] BLOCK 3: Stored Procedure Transaction ACID & Rollback Tests passed successfully.
+ 
+============================================================
+  ALL PART 3 PROGRAMMABILITY TESTS PASSED (100% OK)        
+============================================================
+```
+
+Chạy toàn bộ 9 bước triển khai tự động qua `deploy.sh`:
+```text
+[INFO] 2026-10-17 10:40:34 | ==================================================
+[INFO] 2026-10-17 10:40:34 |  Pokémon World Database Automated Deployment 
+[INFO] 2026-10-17 10:40:34 |  Container: sqlserver | Host: localhost:sa
+[INFO] 2026-10-17 10:40:34 |  Directory: /home/longmeow/workspace/antiWorkspace/pokemon_world
+[INFO] 2026-10-17 10:40:34 | ==================================================
+[INFO] 2026-10-17 10:40:34 | Docker container 'sqlserver' is active and running.
+[INFO] 2026-10-17 10:40:34 | Verifying SQL Server database engine connectivity...
+[INFO] 2026-10-17 10:40:34 | SQL Server connectivity confirmed.
+[INFO] 2026-10-17 10:40:34 | All 9 deployment script files verified in /home/longmeow/workspace/antiWorkspace/pokemon_world.
+[STEP 1/9] 2026-10-17 10:40:34 | Deploying createDB.sql (Recreates database pokemon_world & 7 tables with PKs) -> Database: [master]
+[SUCCESS] 2026-10-17 10:40:34 | Step 1/9 completed: createDB.sql applied cleanly.
+[STEP 2/9] 2026-10-17 10:40:34 | Deploying constraints.sql (Applies 8 FKs, 4 CHECKs, 5 UNIQUEs) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:34 | Step 2/9 completed: constraints.sql applied cleanly.
+[STEP 3/9] 2026-10-17 10:40:35 | Deploying insert.sql (Seeds 50 Pokemon and >= 10 rows per table) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:35 | Step 3/9 completed: insert.sql applied cleanly.
+[STEP 4/9] 2026-10-17 10:40:35 | Deploying views.sql (Creates vw_TrainerParty & vw_PokedexProgress) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:35 | Step 4/9 completed: views.sql applied cleanly.
+[STEP 5/9] 2026-10-17 10:40:35 | Deploying function.sql (Creates scalar function fn_GetPokemonTotalStats) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:35 | Step 5/9 completed: function.sql applied cleanly.
+[STEP 6/9] 2026-10-17 10:40:35 | Deploying trigger.sql (Creates AFTER trigger TR_OwnedPokemon_CheckLevel) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:35 | Step 6/9 completed: trigger.sql applied cleanly.
+[STEP 7/9] 2026-10-17 10:40:35 | Deploying procedure.sql (Creates transactional procedure usp_CatchPokemon) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:35 | Step 7/9 completed: procedure.sql applied cleanly.
+[STEP 8/9] 2026-10-17 10:40:35 | Deploying queries.sql (Executes 10 functional business queries) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:36 | Step 8/9 completed: queries.sql applied cleanly.
+[STEP 9/9] 2026-10-17 10:40:36 | Deploying test_all.sql (Executes end-to-end automated verification suite) -> Database: [pokemon_world]
+[SUCCESS] 2026-10-17 10:40:36 | Step 9/9 completed: test_all.sql applied cleanly.
+[INFO] 2026-10-17 10:40:36 | ==================================================
+[SUCCESS] 2026-10-17 10:40:36 | ALL 9 DEPLOYMENT STEPS COMPLETED SUCCESSFULLY!
+[INFO] 2026-10-17 10:40:36 | Total Deployment & Verification Duration: 2s
+[INFO] 2026-10-17 10:40:36 | ==================================================
+```
+
+### 4.3. Thảo luận và Phản biện Pull Request #3
+- **Long (`long.hp@fpt.edu.vn`)**:
+  > *"Chào Dũng và Tiến! Mình vừa hoàn thành xong hạng mục phức tạp nhất của dự án (Requirement R4). Mình đã đưa vào hệ thống đầy đủ các đối tượng lập trình T-SQL nâng cao:
+  > 1. Hàm `dbo.fn_GetPokemonTotalStats`: Tính tổng 3 chỉ số cơ bản của loài Pokémon, trả về 0 an toàn nếu không tìm thấy ID. Test với Bulbasaur ra đúng 143 điểm.
+  > 2. Trigger `dbo.TR_OwnedPokemon_CheckLevel`: Cơ chế AFTER INSERT, UPDATE rà soát bảng `inserted`. Khi Level nằm ngoài [1, 100], trigger lập tức ROLLBACK TRANSACTION và ném mã lỗi nghiệp vụ 50050.
+  > 3. Thủ tục `dbo.usp_CatchPokemon`: Quản lý giao dịch nguyên tử ACID (`SET XACT_ABORT ON; BEGIN TRAN ... COMMIT TRAN`), kiểm tra chặt chẽ Trainer (lỗi 51000) và vị trí bắt gặp hoang dã (lỗi 51001), thêm cá thể vào PC và tự động cập nhật bách khoa toàn thư `PersonalPokedex` với `IsCaught = 1`.
+  > 4. Mình cũng đã hoàn thiện kịch bản `deploy.sh` tự động triển khai toàn bộ CSDL và chạy suite `test_all.sql` chỉ trong 2 giây, cùng với việc hoàn thiện workflow GitHub Actions CI chạy toàn bộ 3 bài test con và bài test tổng hợp.
+  > Hai bạn review kỹ mã nguồn T-SQL, chạy thử trên máy và cho mình ý kiến nhé!"*
+
+- **Dũng (`dung.nv@fpt.edu.vn`)**:
+  > *"Chào Long! Mình đã kéo nhánh `feature/long-programmability-deploy` về và kiểm tra rất chi tiết. Mình đặc biệt chú ý phần logic kiểm soát biên của Trigger `TR_OwnedPokemon_CheckLevel`:
+  > - Ở Part 1, mình đã tạo CHECK constraint `CK_OwnedPokemon_Level` trên bảng `OwnedPokemon`.
+  > - Việc Long bổ sung Trigger `TR_OwnedPokemon_CheckLevel` ném lỗi 50050 là sự kết hợp hoàn hảo cho kiến trúc Defense-in-depth: CHECK constraint là chốt chặn tĩnh ở tầng Schema, còn Trigger đóng vai trò chốt chặn chủ động ở tầng nghiệp vụ với mã lỗi tùy biến rõ nghĩa cho lập trình viên ứng dụng.
+  > - Trong file test `test_part3_programmability.sql`, Long đã xử lý kỹ thuật rất chuyên nghiệp: dùng `NOCHECK CONSTRAINT` tạm thời trong khối TRY/CATCH để kiểm thử độc lập logic trigger ném mã lỗi 50050, sau đó phục hồi ngay bằng `WITH CHECK CHECK CONSTRAINT`.
+  > - Mình đã chạy `./deploy.sh` trên Docker container, script chạy cực mượt chỉ mất đúng 2 giây. Mã nguồn T-SQL của Long rất mẫu mực. Mình hoàn toàn Approve PR #3!"*
+
+- **Tiến (`tien.tm@fpt.edu.vn`)**:
+  > *"Chào Long! Mình đã kiểm tra đối chiếu thủ tục lưu trữ `dbo.usp_CatchPokemon` với tập dữ liệu phân bố hoang dã 40 dòng trong `WildEncounter` và dữ liệu `PersonalPokedex` mà mình nạp ở Part 2.
+  > - Logic kiểm tra `@Level BETWEEN MinLevel AND MaxLevel` tại `LocationID` rất chặt chẽ, ngăn chặn hoàn toàn việc bắt Pokémon sai địa danh hoặc sai cấp độ.
+  > - Cú pháp `MERGE dbo.PersonalPokedex` hoạt động hoàn hảo: khi Trainer 1 bắt Squirtle ở Location 1, bản ghi được tự động chuyển thành `IsCaught = 1` một cách nguyên tử.
+  > - Mình cũng đã chạy thử nghiệm các trường hợp âm bản: truyền TrainerID sai (ném lỗi 51000) và PokemonID sai (ném lỗi 51001), giao dịch đều được hủy bỏ sạch sẽ, không hề để lại rác dữ liệu.
+  > - Workflow GitHub Actions hoàn thiện và chạy đầy đủ cả 3 bài test của 3 đứa mình cùng `test_all.sql`. Mọi thứ đã hoàn hảo để chuẩn bị cho bản phát hành Release v1.0.0. Mình Approve!"*
+
+- **Hành động Merge**: Hoàng Phi Long thực hiện merge `--no-ff` Pull Request #3 vào `develop`.
+
 
