@@ -83,8 +83,8 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
 |       Region       |        |      Pokemon       |
 +--------------------+        +--------------------+
 | PK  RegionID       |        | PK  PokemonID      |
-|     RegionName (UQ)|        |     PokedexNumber(UQ)
-|     Description    |        |     PokemonName (UQ)
+|     Name (UQ)      |        |     NationalDexNumber(UQ)
+|     Description    |        |     Name (UQ)      |
 +---------+----------+        |     PrimaryType    |
           | 1                 |     SecondaryType  |
           |                   |     BaseHP         |
@@ -94,7 +94,7 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
 +--------------------+             |    |    |
 | PK  LocationID     |             |    |    |
 | FK  RegionID       |             |    |    |
-|     LocationName   |             |    |    |
+|     Name           |             |    |    |
 |     LocationType   |             |    |    |
 +----+---------+-----+             |    |    |
      |         |                   |    |    |
@@ -107,7 +107,7 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
 |PK Trainr|  | PK  EncounterID        | | | PK  OwnedPokemonID      |
 |  User(UQ)  | FK  LocationID         | | | FK  TrainerID           |
 |  Email(UQ) | FK  PokemonID ---------+ | | FK  PokemonID ----------+
-|FK HomeLoc  |     MinLevel           | | |     Nickname            |
+|FK LocID |  |     MinLevel           | | |     Nickname            |
 +----+----+  |     MaxLevel           | | |     Level               |
      |       +------------------------+ | |     PartySlot           |
      | 1                                | +------------+------------+
@@ -119,10 +119,10 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
 +----+----------------------------------+---+
 |              PersonalPokedex              |
 +-------------------------------------------+
-| PK  PokedexEntryID                        |
-| FK  TrainerID                             |
-| FK  PokemonID ----------------------------+
-|     IsCaught                              |
+| PK,FK TrainerID                           |
+| PK,FK PokemonID --------------------------+
+|       FirstSeenAt                         |
+|       IsCaught                            |
 +-------------------------------------------+
 ```
 
@@ -130,13 +130,13 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
 
 | Tên bảng | Khóa chính (PK) | Thuộc tính chính & Khóa ngoại (FK) | Ràng buộc nghiệp vụ & Chuẩn hóa |
 |---|---|---|---|
-| **Region** | `RegionID` (INT IDENTITY) | `RegionName` NVARCHAR(50), `Description` NVARCHAR(255) | Tên vùng là duy nhất (`UQ_Region_Name`). Mỗi vùng chứa nhiều địa điểm. |
-| **Location** | `LocationID` (INT IDENTITY) | `RegionID` (FK -> Region), `LocationName` NVARCHAR(100), `LocationType` NVARCHAR(50) | Thuộc về một Region xác định. `FK_Location_Region` đảm bảo tính toàn vẹn tham chiếu. |
-| **Pokemon** | `PokemonID` (INT IDENTITY) | `PokedexNumber` INT, `PokemonName` NVARCHAR(50), `PrimaryType`, `SecondaryType`, `BaseHP`, `BaseAttack`, `BaseDefense` | `PokedexNumber` và `PokemonName` là duy nhất (`UQ`). `CK_Pokemon_BaseHP` đảm bảo `BaseHP > 0`. |
-| **Trainer** | `TrainerID` (INT IDENTITY) | `Username` NVARCHAR(50), `Email` NVARCHAR(100), `HomeLocationID` (FK -> Location) | `Username` và `Email` duy nhất (`UQ`). `HomeLocationID` liên kết đến địa điểm xuất phát. |
-| **WildEncounter** | `EncounterID` (INT IDENTITY) | `LocationID` (FK -> Location), `PokemonID` (FK -> Pokemon), `MinLevel`, `MaxLevel` | Liên kết M-N giữa Location và Pokemon. `CK_WildEncounter_Level`: `MinLevel > 0 AND MinLevel <= MaxLevel AND MaxLevel <= 100`. |
-| **OwnedPokemon** | `OwnedPokemonID` (INT IDENTITY) | `TrainerID` (FK -> Trainer), `PokemonID` (FK -> Pokemon), `Nickname`, `Level`, `PartySlot` | Quản lý Pokémon của Trainer. `CK_OwnedPokemon_Level` (`1..100`), `CK_OwnedPokemon_PartySlot` (`NULL` hoặc `1..6`). Index lọc duy nhất (`UX_OwnedPokemon_PartySlot`) chống trùng slot trong đội hình. |
-| **PersonalPokedex** | `PokedexEntryID` (INT IDENTITY) | `TrainerID` (FK -> Trainer), `PokemonID` (FK -> Pokemon), `IsCaught` BIT | Quản lý sổ tay Pokédex cá nhân của từng Trainer. Theo dõi trạng thái đã gặp và đã bắt (`IsCaught = 1`). |
+| **Region** | `RegionID` (INT IDENTITY) | `Name` NVARCHAR(50), `Description` NVARCHAR(255) | Tên vùng là duy nhất (`UQ_Region_Name`). Mỗi vùng chứa nhiều địa điểm. |
+| **Location** | `LocationID` (INT IDENTITY) | `RegionID` (FK -> Region), `Name` NVARCHAR(100), `LocationType` VARCHAR(20) | Thuộc về một Region xác định. `FK_Location_Region` đảm bảo tính toàn vẹn tham chiếu. |
+| **Pokemon** | `PokemonID` (INT IDENTITY) | `NationalDexNumber` INT, `Name` NVARCHAR(50), `PrimaryType` VARCHAR(20), `SecondaryType` VARCHAR(20), `BaseHP` INT, `BaseAttack` INT, `BaseDefense` INT | `NationalDexNumber` và `Name` là duy nhất (`UQ_Pokemon_Dex`, `UQ_Pokemon_Name`). `CK_Pokemon_BaseHP` đảm bảo `BaseHP > 0`. |
+| **Trainer** | `TrainerID` (INT IDENTITY) | `Username` NVARCHAR(50), `Email` VARCHAR(100), `LocationID` (FK -> Location) | `Username` và `Email` duy nhất (`UQ_Trainer_Username`, `UQ_Trainer_Email`). `LocationID` liên kết đến địa điểm hiện tại. |
+| **WildEncounter** | `EncounterID` (INT IDENTITY) | `LocationID` (FK -> Location), `PokemonID` (FK -> Pokemon), `MinLevel` INT, `MaxLevel` INT | Liên kết M-N giữa Location và Pokemon. `CK_WildEncounter_Level`: `MinLevel > 0 AND MinLevel <= MaxLevel AND MaxLevel <= 100`. |
+| **OwnedPokemon** | `OwnedPokemonID` (INT IDENTITY) | `TrainerID` (FK -> Trainer), `PokemonID` (FK -> Pokemon), `Nickname` NVARCHAR(50), `Level` INT, `PartySlot` INT | Quản lý Pokémon của Trainer. `CK_OwnedPokemon_Level` (`1..100`), `CK_OwnedPokemon_PartySlot` (`NULL` hoặc `1..6`). |
+| **PersonalPokedex** | `TrainerID, PokemonID` (Composite PK) | `TrainerID` (FK -> Trainer), `PokemonID` (FK -> Pokemon), `FirstSeenAt` DATETIME, `IsCaught` BIT | Quản lý sổ tay Pokédex cá nhân của từng Trainer. Khóa chính kết hợp `(TrainerID, PokemonID)`. Theo dõi thời điểm gặp đầu tiên (`FirstSeenAt`) và trạng thái bắt (`IsCaught = 1`). |
 
 ---
 
@@ -159,9 +159,9 @@ Cơ sở dữ liệu bao gồm **7 thực thể bảng** được chuẩn hóa n
   3. `CK_OwnedPokemon_PartySlot`: Vị trí đội hình `PartySlot IS NULL OR PartySlot BETWEEN 1 AND 6`.
   4. `CK_WildEncounter_Level`: Cấp độ hoang dã hợp lệ `MinLevel > 0 AND MinLevel <= MaxLevel AND MaxLevel <= 100`.
 - **5 Ràng buộc duy nhất (UNIQUE)**:
-  1. `UQ_Region_Name` (Region.RegionName)
-  2. `UQ_Pokemon_Dex` (Pokemon.PokedexNumber)
-  3. `UQ_Pokemon_Name` (Pokemon.PokemonName)
+  1. `UQ_Region_Name` (Region.Name)
+  2. `UQ_Pokemon_Dex` (Pokemon.NationalDexNumber)
+  3. `UQ_Pokemon_Name` (Pokemon.Name)
   4. `UQ_Trainer_Username` (Trainer.Username)
   5. `UQ_Trainer_Email` (Trainer.Email)
 

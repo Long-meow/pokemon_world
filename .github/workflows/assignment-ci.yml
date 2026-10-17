@@ -1,0 +1,106 @@
+name: Pokemon World Database CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  database-ci:
+    name: Build & Verify Database (SQL Server 2022)
+    runs-on: ubuntu-latest
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          SA_PASSWORD: 'YourPassword@123'
+          MSSQL_SA_PASSWORD: 'YourPassword@123'
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourPassword@123' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install SQL Server Tools (sqlcmd)
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
+          curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update -qq
+          sudo ACCEPT_EULA=Y apt-get install -y -qq mssql-tools18 unixodbc-dev
+          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
+
+      - name: Verify SQL Server Connectivity
+        run: |
+          for i in {1..30}; do
+            if /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -Q "SELECT 1" > /dev/null 2>&1; then
+              echo "SQL Server 2022 is ready and accepting connections."
+              break
+            fi
+            echo "Waiting for SQL Server service container to become healthy..."
+            sleep 2
+          done
+
+      - name: Step 1 - Deploy 7-Table 3NF Schema (createDB.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -i createDB.sql
+
+      - name: Step 2 - Apply 17 Integrity Constraints (constraints.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i constraints.sql
+
+      - name: Step 3 - Execute Part 1 Modular Unit Tests (tests/test_part1_schema.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part1_schema.sql
+
+      - name: Step 4 - Seed 50 Pokémon & Relational Data (insert.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i insert.sql
+
+      - name: Step 5 - Create Business Views (views.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i views.sql
+
+      - name: Step 6 - Run 10 Business Analytical Queries (queries.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i queries.sql
+
+      - name: Step 7 - Execute Part 2 Modular Unit Tests (tests/test_part2_queries.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part2_queries.sql
+
+      - name: Step 8 - Deploy Scalar Function (function.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i function.sql
+
+      - name: Step 9 - Deploy Data Validation Trigger (trigger.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i trigger.sql
+
+      - name: Step 10 - Deploy Transactional Stored Procedure (procedure.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i procedure.sql
+
+      - name: Step 11 - Execute Part 3 Modular Unit Tests (tests/test_part3_programmability.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part3_programmability.sql
+
+      - name: Step 12 - Execute Integrated Verification Test Suite (test_all.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i test_all.sql
+
+      - name: Step 13 - Validate Automated Deployment Runner (./deploy.sh)
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh
+
+      - name: Audit Output Confirmation
+        run: echo "🎉 ALL PARTS 1, 2, 3 TESTS & INTEGRATED VERIFICATION PASSED CLEANLY ON SQL SERVER 2022!"
