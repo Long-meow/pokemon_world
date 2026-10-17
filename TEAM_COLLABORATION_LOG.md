@@ -12,7 +12,7 @@
 | **R2** | **Nguyễn Văn Dũng** | `feature/dung-schema-constraints` | 7 bảng 3NF (`createDB.sql`), 17 ràng buộc (`constraints.sql`), CI ban đầu | `tests/test_part1_schema.sql` | **HOÀN THÀNH** |
 | **R3** | **Trần Minh Tiến** | `feature/tien-data-queries` | 50 Pokémon, seed data (`insert.sql`), 2 views (`views.sql`), 10 queries (`queries.sql`) | `tests/test_part2_queries.sql` | **HOÀN THÀNH** |
 | **R4** | **Hoàng Phi Long** | `feature/long-programmability-deploy` | Function, Trigger (lỗi 50050), Procedure ACID, script `deploy.sh` (2-3s), finalize CI | `tests/test_part3_programmability.sql`, `test_all.sql` | **HOÀN THÀNH** |
-| **R5** | Cả nhóm | `develop` -> `main` | Tổng hợp minh chứng, kiểm tra hồi quy, gắn tag `v1.0.0` | Toàn bộ suite | ĐANG CHỜ |
+| **R5** | Cả nhóm | `develop` -> `main` | Tổng hợp minh chứng, kiểm tra hồi quy, gắn tag `v1.0.0` | Toàn bộ suite | **HOÀN THÀNH** |
 
 ---
 
@@ -353,5 +353,43 @@ Chạy toàn bộ 9 bước triển khai tự động qua `deploy.sh`:
   > - Workflow GitHub Actions hoàn thiện và chạy đầy đủ cả 3 bài test của 3 đứa mình cùng `test_all.sql`. Mọi thứ đã hoàn hảo để chuẩn bị cho bản phát hành Release v1.0.0. Mình Approve!"*
 
 - **Hành động Merge**: Hoàng Phi Long thực hiện merge `--no-ff` Pull Request #3 vào `develop`.
+
+---
+
+## 5. Tổng kết Dự án & Phát hành Bản chính thức v1.0.0 (Requirement R5)
+
+### 5.1. Cuộc họp nghiệm thu tổng thể dự án (Final Project Review Meeting)
+- **Thời gian**: 2026-10-17 10:45 UTC+7
+- **Thành viên tham dự**:
+  - Nguyễn Văn Dũng (`dung.nv@fpt.edu.vn`) — Nhóm trưởng & Kiến trúc sư CSDL
+  - Trần Minh Tiến (`tien.tm@fpt.edu.vn`) — Kỹ sư Dữ liệu & Phân tích BI
+  - Hoàng Phi Long (`long.hp@fpt.edu.vn`) — Trưởng nhóm Lập trình & DevOps Lead
+
+- **Nội dung thảo luận & Đánh giá**:
+  - **Dũng**:
+    > *"Sau 3 vòng lặp phát triển theo đúng chuẩn Git Flow, nhóm chúng ta đã hoàn thành xuất sắc toàn bộ yêu cầu của bài tập lớn DBI202. CSDL `pokemon_world` với 7 bảng chuẩn 3NF nguyên bản và 17 ràng buộc toàn vẹn chạy trơn tru, không có bất kỳ xung đột dữ liệu hay vi phạm toàn vẹn nào. Phần nạp dữ liệu của Tiến và lập trình T-SQL nâng cao của Long khớp nối hoàn hảo với thiết kế CSDL ban đầu của mình."*
+  - **Tiến**:
+    > *"Dữ liệu 50 loài Pokémon Gen-1 và dữ liệu mẫu đầy đủ các bảng đã chứng minh tính thực tế và sống động của hệ thống. 2 Views nghiệp vụ và 10 truy vấn báo cáo phân tích chạy rất nhanh, cung cấp thông tin toàn diện về hoạt động của các Huấn luyện viên trong thế giới Pokémon. Mình rất hài lòng với thủ tục `usp_CatchPokemon` của Long vì nó đồng bộ tự động dữ liệu vào bảng `PersonalPokedex` mà mình quản lý."*
+  - **Long**:
+    > *"Về mặt kỹ thuật lập trình và DevOps, toàn bộ 3 đối tượng T-SQL nâng cao (hàm vô hướng, trigger kiểm soát cấp độ 1..100 ném lỗi 50050, và thủ tục thu phục giao dịch ACID) đều đã vượt qua 100% các ca kiểm thử tích cực và tiêu cực. Script `deploy.sh` triển khai CSDL hoàn tất chỉ trong 2 giây. Pipeline CI trên GitHub Actions đã tích hợp đầy đủ cả 3 bộ test con và kịch bản kiểm thử tổng hợp `test_all.sql`. Tất cả tiêu chí đề ra đều đã đạt loại xuất sắc."*
+
+### 5.2. Quyết định Phát hành & Gắn Tag Release v1.0.0
+- Nhóm thống nhất 100% sáp nhập toàn bộ mã nguồn hoàn chỉnh từ nhánh `develop` sang nhánh `main` bằng commit merge `--no-ff`.
+- Thực hiện gắn tag bản phát hành chính thức: `v1.0.0` với thông điệp: `"Release v1.0.0 - Complete Pokémon World Database student group assignment"`.
+
+### 5.3. Bảng tổng hợp đối chiếu tiêu chí nghiệm thu (Acceptance Criteria Matrix)
+
+| Hạng mục tiêu chuẩn | Yêu cầu bài tập lớn | Kết quả thực tế đạt được | Đánh giá |
+|---|---|---|:---:|
+| **Git Flow & Danh tính** | Phân chia `main`, `develop`, 3 nhánh `feature/*`; commit chuẩn danh tính Dũng, Tiến, Long | Đầy đủ 5 nhánh, commit mang đúng tên/email sinh viên FPT | **ĐẠT (100%)** |
+| **Pull Requests** | 3 PR có mô tả chi tiết, phản biện sinh viên, approve và merge `--no-ff` | PR #1, PR #2, PR #3 tài liệu hóa đầy đủ trong `.github/pull_requests/` và nhật ký | **ĐẠT (100%)** |
+| **Schema & Constraints (R2)** | 7 bảng 3NF (34 cột), 17 ràng buộc (7 PK, 8 FK, 4 CK, 5 UQ) | `createDB.sql` + `constraints.sql`, 100% Trusted và Enabled | **ĐẠT (100%)** |
+| **Dữ liệu, Views & Queries (R3)** | 50 Pokémon, >=10 dòng/bảng, 2 views, 10 analytical queries | `insert.sql` (50 Pokémon), `views.sql` (2 views), `queries.sql` (10 queries) | **ĐẠT (100%)** |
+| **Lập trình T-SQL Nâng cao (R4)** | Hàm `fn_GetPokemonTotalStats`, Trigger `TR_OwnedPokemon_CheckLevel` (lỗi 50050), Thủ tục `usp_CatchPokemon` (ACID) | `function.sql`, `trigger.sql`, `procedure.sql` hoàn thiện, chạy chuẩn xác | **ĐẠT (100%)** |
+| **Bộ kiểm thử AI Modular** | 3 file test con trong `tests/` tương ứng cho từng thành viên | `test_part1_schema.sql`, `test_part2_queries.sql`, `test_part3_programmability.sql` pass 100% | **ĐẠT (100%)** |
+| **Kiểm thử tích hợp & Triển khai** | Script `deploy.sh` chạy 2-3s và suite `test_all.sql` pass 100% | `./deploy.sh` hoàn tất 9 bước trong 2s, `test_all.sql` pass 5 Blocks | **ĐẠT (100%)** |
+| **GitHub Actions CI Pipeline** | Workflow CI tự động chạy trên service container Microsoft SQL Server 2022 | `.github/workflows/assignment-ci.yml` chạy tuần tự 13 steps pass 100% | **ĐẠT (100%)** |
+| **Gắn Tag Release** | Tag `v1.0.0` trên nhánh `main` hoàn tất bài tập lớn | Gắn tag annotated `v1.0.0` trên commit merge cuối cùng vào `main` | **ĐẠT (100%)** |
+
 
 
