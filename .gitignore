@@ -1,0 +1,21 @@
+# Agent and IDE metadata
+.agents/
+.obsidian/
+.vscode/
+.idea/
+
+# Python caches and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Temporary and swap files
+*.tmp
+*.temp
+*.swp
+*.bak
+*~
+.DS_Store
+Thumbs.db
