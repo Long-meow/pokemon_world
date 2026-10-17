@@ -61,5 +61,21 @@ jobs:
         run: |
           sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part1_schema.sql
 
+      - name: Step 4 - Seed 50 Pokémon & Relational Data (insert.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i insert.sql
+
+      - name: Step 5 - Create Business Views (views.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i views.sql
+
+      - name: Step 6 - Run 10 Business Analytical Queries (queries.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i queries.sql
+
+      - name: Step 7 - Execute Part 2 Modular Unit Tests (tests/test_part2_queries.sql)
+        run: |
+          sqlcmd -S 127.0.0.1,1433 -U sa -P 'YourPassword@123' -C -b -d pokemon_world -i tests/test_part2_queries.sql
+
       - name: Audit Output Confirmation
-        run: echo "🎉 ALL PART 1 SCHEMA & CONSTRAINT TESTS PASSED CLEANLY ON SQL SERVER 2022!"
+        run: echo "🎉 ALL PART 1 & PART 2 TESTS PASSED CLEANLY ON SQL SERVER 2022!"
